@@ -31,6 +31,9 @@ type Lead = {
   submitted_at: string | null;
   reviewer_name: string | null;
   review_note: string | null;
+  customer_id: string | null;
+  customer_name: string | null;
+  capture_method: "manual" | "whatsapp";
 };
 
 const FILTERS = [
@@ -360,7 +363,19 @@ function LeadsPage() {
                               </div>
                             </td>
                           )}
-                          <td className="t-small">{l.source || "—"}</td>
+                          <td className="t-small">
+                            <div>{l.source || "—"}</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 3 }}>
+                              <span style={{ color: l.capture_method === "whatsapp" ? "var(--ai-1)" : "var(--signal)", fontWeight: 700, fontSize: 11 }}>
+                                {l.capture_method === "whatsapp" ? "🤖 Otomatis" : "✍ Manual"}
+                              </span>
+                            </div>
+                            {l.customer_name && (
+                              <Link href={`/customers`} style={{ fontSize: 11, color: "var(--muted)", textDecoration: "underline" }}>
+                                {l.customer_name}
+                              </Link>
+                            )}
+                          </td>
                           <td><ScoreBar score={l.ai_score} /></td>
                           <td className="t-small">{timeAgo(l.last_activity_at)}</td>
                         </tr>
@@ -625,7 +640,13 @@ function NewLeadForm({
   const [description, setDescription] = useState("");
   const [budget, setBudget] = useState("");
   const [timeline, setTimeline] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [submitting, setSubmitting] = useState<"draft" | "submit" | null>(null);
+
+  useEffect(() => {
+    apiGet<{ id: string; name: string }[]>("/customers").then(setCustomers).catch(() => {});
+  }, []);
 
   const canSubmitDirectly = name && company && vendorName && description && budget && timeline;
 
@@ -636,6 +657,7 @@ function NewLeadForm({
         name, company, role_title: roleTitle || null, email: email || null, phone: phone || null, source,
         vendor_name: vendorName || null, description: description || null,
         budget: budget ? Number(budget) : null, timeline: timeline || null,
+        customer_id: customerId || null,
       });
       if (thenSubmit) {
         await apiPost(`/leads/${created.id}/submit`);
@@ -681,6 +703,13 @@ function NewLeadForm({
           <label>Sumber</label>
           <select value={source} onChange={(e) => setSource(e.target.value)}>
             <option>Website</option><option>Referral</option><option>Event</option><option>Cold outreach</option>
+          </select>
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label>Customer pemberi lead</label>
+          <select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+            <option value="">— Belum ada / bikin dari lead ini —</option>
+            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
       </div>

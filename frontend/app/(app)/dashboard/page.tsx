@@ -32,6 +32,19 @@ type Deal = {
   updated_at: string;
 };
 
+type Chain = {
+  customer_count: number;
+  sales_count: number;
+  opportunity_count: number;
+  pipeline_value: number;
+  auto_lead_count: number;
+  manual_lead_count: number;
+  project_count: number;
+  project_ongoing_count: number;
+  purchase_pending_count: number;
+  inventory_low_stock_count: number;
+};
+
 const REVENUE_TARGET = 900_000_000;
 
 function formatRupiah(n: number) {
@@ -46,6 +59,7 @@ export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [tasks, setTasks] = useState<Activity[]>([]);
+  const [chain, setChain] = useState<Chain | null>(null);
   const [nextBestAction, setNextBestAction] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
@@ -56,14 +70,16 @@ export default function DashboardPage() {
   async function load() {
     setLoading(true);
     try {
-      const [leadsData, dealsData, tasksData] = await Promise.all([
+      const [leadsData, dealsData, tasksData, chainData] = await Promise.all([
         apiGet<Lead[]>("/leads"),
         apiGet<Deal[]>("/deals"),
         apiGet<Activity[]>("/activities?filter=due_today"),
+        apiGet<Chain>("/dashboard/chain"),
       ]);
       setLeads(leadsData);
       setDeals(dealsData);
       setTasks(tasksData);
+      setChain(chainData);
 
       const candidate = [...leadsData]
         .filter((l) => l.status !== "qualified" && l.status !== "unqualified")
@@ -137,7 +153,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="dash-hero-revenue">
-                <div className="dash-hero-revenue-label">Revenue tim</div>
+                <div className="dash-hero-revenue-label">{user?.role === "manager" ? "Revenue tim" : "Revenue kamu"}</div>
                 <div className="dash-hero-revenue-value">{formatRupiah(revenue)}</div>
                 <div className="dash-hero-progress-track">
                   <div className="dash-hero-progress-fill" style={{ width: `${revenuePct}%` }} />
@@ -145,6 +161,87 @@ export default function DashboardPage() {
                 <div className="dash-hero-revenue-sub">{revenuePct}% dari target {formatRupiah(REVENUE_TARGET)}</div>
               </div>
             </div>
+
+            {/* ── Chain flow: Customer → Sales → Opportunity → Pipeline → Project → Purchase → Inventory ──
+                 Manager-only: kebanyakan node-nya nunjuk ke halaman yang emang di luar akses Sales
+                 (Customer/Opportunity/Project/Purchase/Inventory), jadi daripada nunjukin link yang keblokir,
+                 mending gak usah ditampilin buat Sales. Sales udah kecukupan sama pulse-row di atas. */}
+            {chain && user?.role === "manager" && (
+              <div className="chain-card">
+                <div className="chain-head">
+                  <div>
+                    <div className="t-h3">{user?.role === "manager" ? "Alur kerja tim" : "Alur kerja kamu"}</div>
+                    <div className="t-small">
+                      {user?.role === "manager"
+                        ? "Customer kasih lead → Sales kerjain → di-approve jadi Opportunity → lanjut ke Pipeline-nya sendiri"
+                        : "Customer kasih lead ke kamu → kamu kerjain → di-approve manager jadi Opportunity → lanjut ke Pipeline"}
+                    </div>
+                  </div>
+                  <div className="chain-input-tags">
+                    <span className="chain-input-tag">🤖 <b>{chain.auto_lead_count}</b> lead otomatis (WA)</span>
+                    <span className="chain-input-tag">✍ <b>{chain.manual_lead_count}</b> lead manual</span>
+                  </div>
+                </div>
+                <div className="chain-flow">
+                  <Link href="/customers" className="chain-node">
+                    <div className="chain-node-icon">🏢</div>
+                    <div className="chain-node-label">Customer</div>
+                    <div className="chain-node-value">{chain.customer_count}</div>
+                    <div className="chain-node-desc">{user?.role === "sales" ? "Yang kasih lead ke kamu" : "Pihak yang ngasih lead ke tim"}</div>
+                  </Link>
+                  <div className="chain-arrow"><span>→</span></div>
+                  <Link href="/leads?tab=active" className="chain-node">
+                    <div className="chain-node-icon">👤</div>
+                    <div className="chain-node-label">Sales</div>
+                    <div className="chain-node-value">{user?.role === "sales" ? "Kamu" : chain.sales_count}</div>
+                    <div className="chain-node-desc">{user?.role === "sales" ? user.name : "Yang lagi ngerjain lead"}</div>
+                  </Link>
+                  <div className="chain-arrow"><span>→</span></div>
+                  <Link href="/opportunities" className="chain-node is-opportunity">
+                    <div className="chain-node-icon">🎯</div>
+                    <div className="chain-node-label">Opportunity</div>
+                    <div className="chain-node-value">{chain.opportunity_count}</div>
+                    <div className="chain-node-desc">Lead yang udah di-approve manager</div>
+                  </Link>
+                  <div className="chain-arrow"><span>→</span></div>
+                  <Link href="/pipeline" className="chain-node is-opportunity">
+                    <div className="chain-node-icon">◧</div>
+                    <div className="chain-node-label">Pipeline</div>
+                    <div className="chain-node-value">{formatRupiah(chain.pipeline_value)}</div>
+                    <div className="chain-node-desc">Total value di Kanban, lanjutan Opportunity</div>
+                  </Link>
+                </div>
+
+                <div className="chain-divider">
+                  <span>Closed Won</span>
+                </div>
+
+                <div className="chain-flow">
+                  <Link href="/projects" className="chain-node is-ops">
+                    <div className="chain-node-icon">📁</div>
+                    <div className="chain-node-label">Project</div>
+                    <div className="chain-node-value">{chain.project_count}</div>
+                    <div className="chain-node-desc">{chain.project_ongoing_count} lagi berjalan</div>
+                  </Link>
+                  <div className="chain-arrow"><span>→</span></div>
+                  <Link href="/purchases" className="chain-node is-ops">
+                    <div className="chain-node-icon">🧾</div>
+                    <div className="chain-node-label">Purchase</div>
+                    <div className="chain-node-value">{chain.purchase_pending_count}</div>
+                    <div className="chain-node-desc">{chain.purchase_pending_count > 0 ? "PR nunggu approval" : "Gak ada yang nunggu"}</div>
+                  </Link>
+                  <div className="chain-arrow"><span>→</span></div>
+                  <Link href="/inventory" className="chain-node is-ops">
+                    <div className="chain-node-icon">🏬</div>
+                    <div className="chain-node-label">Inventory</div>
+                    <div className="chain-node-value" style={{ color: chain.inventory_low_stock_count > 0 ? "var(--danger)" : undefined }}>
+                      {chain.inventory_low_stock_count}
+                    </div>
+                    <div className="chain-node-desc">{chain.inventory_low_stock_count > 0 ? "produk stock menipis" : "stock aman semua"}</div>
+                  </Link>
+                </div>
+              </div>
+            )}
 
             <div className="dash-grid">
               {/* ── Kolom utama: yang butuh AKSI dari kamu hari ini ── */}
@@ -205,12 +302,12 @@ export default function DashboardPage() {
                   <div className="dash-pulse-card">
                     <span className="dash-pulse-label">Lead baru</span>
                     <div className="dash-pulse-value">{leadsThisWeek}</div>
-                    <div className="t-small">7 hari terakhir</div>
+                    <div className="t-small">7 hari terakhir{user?.role !== "manager" ? " · punya kamu" : ""}</div>
                   </div>
                   <div className="dash-pulse-card">
                     <span className="dash-pulse-label">Deal aktif</span>
                     <div className="dash-pulse-value">{activeDeals}</div>
-                    <div className="t-small">di pipeline</div>
+                    <div className="t-small">{user?.role === "manager" ? "di pipeline tim" : "di pipeline kamu"}</div>
                   </div>
                   <div className="dash-pulse-card">
                     <span className="dash-pulse-label">Win rate</span>

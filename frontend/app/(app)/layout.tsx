@@ -11,6 +11,12 @@ export const useAppShell = () => useContext(AppContext);
 
 // Route rules per role
 const ADMIN_ALLOWED = ["/settings"];
+// /team (menu Sales — buat manager ngatur beban kerja & reassign) SENGAJA gak dimasukin,
+// itu emang cuma buat manager. Selain itu sales boleh akses semua halaman kerja hariannya.
+// Sales cuma PIC di fase akuisisi (Pipeline/Lead) — begitu masuk fase implementasi/operasional
+// (Project, Purchase, Inventory), itu tanggung jawab Project Manager/Ops, bukan Sales.
+// /customers, /opportunities (daftar), /projects, /purchases, /inventory, /team semuanya
+// Manager-only karena itu (Manager jadi surrogate role Ops, sistem cuma punya 3 role).
 const SALES_ALLOWED = ["/dashboard", "/leads", "/pipeline", "/activities", "/reports", "/settings"];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

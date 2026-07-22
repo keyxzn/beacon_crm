@@ -4,7 +4,8 @@ from pydantic import BaseModel, EmailStr, ConfigDict
 
 from app.models import (
     RoleEnum, LeadStatusEnum, ApprovalStatusEnum, DealStageEnum, DealDocTypeEnum,
-    ActivityTypeEnum, InteractionTypeEnum,
+    ActivityTypeEnum, InteractionTypeEnum, LeadCaptureEnum,
+    ProjectStatusEnum, PurchaseTypeEnum, PurchaseStatusEnum, StockMovementTypeEnum,
 )
 
 
@@ -49,6 +50,31 @@ class PasswordReset(BaseModel):
     password: str
 
 
+# ---------- Customer ----------
+class CustomerCreate(BaseModel):
+    name: str
+    contact_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    channel: Optional[str] = None
+
+
+class CustomerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    contact_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    channel: Optional[str] = None
+    created_at: datetime
+    # computed
+    leads_given: int = 0
+    opportunities_count: int = 0
+    is_repeat: bool = False
+    last_interaction_at: Optional[datetime] = None
+
+
 # ---------- Lead ----------
 class LeadCreate(BaseModel):
     name: str
@@ -62,6 +88,8 @@ class LeadCreate(BaseModel):
     description: Optional[str] = None
     budget: Optional[float] = None
     timeline: Optional[str] = None
+    customer_id: Optional[str] = None
+    capture_method: LeadCaptureEnum = LeadCaptureEnum.manual
 
 
 class LeadUpdate(BaseModel):
@@ -76,6 +104,7 @@ class LeadUpdate(BaseModel):
     description: Optional[str] = None
     budget: Optional[float] = None
     timeline: Optional[str] = None
+    customer_id: Optional[str] = None
 
 
 class LeadReviewRequest(BaseModel):
@@ -109,6 +138,9 @@ class LeadOut(BaseModel):
     owner_id: Optional[str]
     owner_name: Optional[str] = None
     reviewer_name: Optional[str] = None
+    customer_id: Optional[str] = None
+    customer_name: Optional[str] = None
+    capture_method: LeadCaptureEnum
     created_at: datetime
     last_activity_at: datetime
 
@@ -213,6 +245,31 @@ class InteractionOut(BaseModel):
     created_at: datetime
 
 
+class WhatsAppInboundPayload(BaseModel):
+    """Payload minimal dari WA gateway pas ada chat masuk dari nomor baru/lama.
+    Di real-world ini nyambung ke provider kayak Meta Cloud API / Twilio,
+    tapi struktur intinya tetep: siapa yang chat + isi pesannya apa."""
+    phone: str
+    customer_name: Optional[str] = None      # nama dari profil WA, kalau ada
+    company: Optional[str] = None
+    message: Optional[str] = None            # isi chat pertama, dipakai jadi deskripsi awal
+
+
+# ---------- Dashboard ----------
+class DashboardChainOut(BaseModel):
+    customer_count: int
+    sales_count: int
+    opportunity_count: int
+    pipeline_value: float
+    auto_lead_count: int
+    manual_lead_count: int
+    # lanjutan chain: Project -> Purchase -> Inventory
+    project_count: int = 0
+    project_ongoing_count: int = 0
+    purchase_pending_count: int = 0   # PR yang lagi nunggu approval manager
+    inventory_low_stock_count: int = 0
+
+
 # ---------- Reports ----------
 class RevenueByMonth(BaseModel):
     month: str   # label periode: "Jun" buat bulanan, "30 Jun" buat harian
@@ -259,3 +316,144 @@ class ReportsOut(BaseModel):
     leaderboard: List[LeaderboardRow]
     churn_risk: List[ChurnRiskRow]
     deals: List[DealDetailRow] = []
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Lanjutan chain: Project -> Purchase -> Inventory
+# ══════════════════════════════════════════════════════════════════════
+
+# ---------- Project ----------
+class ProjectCreate(BaseModel):
+    deal_id: str
+    name: str
+    budget: float = 0
+    owner_id: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    budget: Optional[float] = None
+    status: Optional[ProjectStatusEnum] = None
+    owner_id: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class ProjectOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    deal_id: str
+    name: str
+    budget: float
+    status: ProjectStatusEnum
+    owner_id: Optional[str] = None
+    owner_name: Optional[str] = None
+    deal_title: Optional[str] = None
+    customer_name: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    # computed
+    spent: float = 0            # total value PO yang udah "received" buat project ini
+    budget_used_pct: float = 0
+
+
+# ---------- Product ----------
+class ProductCreate(BaseModel):
+    name: str
+    sku: Optional[str] = None
+    unit: str = "pcs"
+    category: Optional[str] = None
+    unit_price: float = 0
+    reorder_level: int = 0
+
+
+class ProductOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    sku: Optional[str] = None
+    name: str
+    unit: str
+    category: Optional[str] = None
+    unit_price: float
+    reorder_level: int
+    stock_qty: int
+    is_low_stock: bool = False
+
+
+# ---------- Purchase (PR / PO / Return) ----------
+class PurchaseItemIn(BaseModel):
+    product_id: str
+    qty: int
+    unit_price: Optional[float] = None  # kalau kosong, dipakai harga default produk
+
+
+class PurchaseItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    product_id: str
+    product_name: Optional[str] = None
+    unit: Optional[str] = None
+    qty: int
+    unit_price: float
+    subtotal: float = 0
+
+
+class PurchaseCreate(BaseModel):
+    type: PurchaseTypeEnum
+    project_id: Optional[str] = None
+    vendor_name: Optional[str] = None
+    notes: Optional[str] = None
+    source_purchase_id: Optional[str] = None  # wajib diisi kalau type == return
+    items: List[PurchaseItemIn] = []
+
+
+class PurchaseStatusUpdate(BaseModel):
+    status: PurchaseStatusEnum
+
+
+class PurchaseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    number: str
+    type: PurchaseTypeEnum
+    status: PurchaseStatusEnum
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    vendor_name: Optional[str] = None
+    notes: Optional[str] = None
+    requested_by: Optional[str] = None
+    requester_name: Optional[str] = None
+    approved_by: Optional[str] = None
+    approver_name: Optional[str] = None
+    source_purchase_id: Optional[str] = None
+    total_value: float = 0
+    items: List[PurchaseItemOut] = []
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---------- Inventory / Stock ----------
+class StockAdjustment(BaseModel):
+    product_id: str
+    type: StockMovementTypeEnum
+    qty: int
+    note: Optional[str] = None
+
+
+class StockMovementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    product_id: str
+    product_name: Optional[str] = None
+    type: StockMovementTypeEnum
+    qty: int
+    reference: Optional[str] = None
+    note: Optional[str] = None
+    created_by_name: Optional[str] = None
+    created_at: datetime

@@ -29,6 +29,7 @@ def _to_lead_out(lead: models.Lead) -> schemas.LeadOut:
     data = {c.name: getattr(lead, c.name) for c in models.Lead.__table__.columns}
     data["owner_name"] = lead.owner.name if lead.owner else None
     data["reviewer_name"] = lead.reviewer.name if lead.reviewer else None
+    data["customer_name"] = lead.customer.name if lead.customer else None
     return schemas.LeadOut(**data)
 
 
@@ -41,6 +42,8 @@ def list_leads(
     source: Optional[str] = None,
     approval_status: Optional[str] = "approved",  # "draft" | "in_review" | "approved" | "rejected" | "all"
     owner_id: Optional[str] = None,  # cuma admin/manager yang efektif bisa pakai ini
+    customer_id: Optional[str] = None,
+    capture_method: Optional[str] = None,  # "manual" | "whatsapp"
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -57,6 +60,10 @@ def list_leads(
         q = q.filter(models.Lead.status == status)
     if source:
         q = q.filter(models.Lead.source == source)
+    if customer_id:
+        q = q.filter(models.Lead.customer_id == customer_id)
+    if capture_method:
+        q = q.filter(models.Lead.capture_method == capture_method)
     if search:
         like = f"%{search}%"
         q = q.filter((models.Lead.name.ilike(like)) | (models.Lead.company.ilike(like)))

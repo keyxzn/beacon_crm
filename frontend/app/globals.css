@@ -212,6 +212,8 @@ button { font-family: inherit; cursor: pointer; }
 .sb-section-lbl{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); padding:4px 8px 6px; }
 .sb-team-item{ display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:8px; font-size:12px; color:var(--muted); }
 .sb-team-item:hover{ background:var(--surface); color:var(--text); }
+.sb-team-manage{ display:block; margin-top:4px; padding:7px 8px; font-size:11.5px; font-weight:700; color:var(--signal); }
+.sb-team-manage:hover{ text-decoration:underline; }
 
 .main{ flex:1; margin-left:220px; min-height:100vh; display:flex; flex-direction:column; }
 .topbar{ height:64px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:0 28px; border-bottom:1px solid var(--border); position:sticky; top:0; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter:blur(8px); z-index:30; }
@@ -556,6 +558,74 @@ button { font-family: inherit; cursor: pointer; }
 .dash-pulse-label { font-size: 10.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .dash-pulse-value { font-family: 'Sora', sans-serif; font-size: 21px; font-weight: 800; letter-spacing: -.01em; margin-top: 6px; }
 @media (max-width: 560px) { .dash-pulse-row { flex-direction: column; } }
+
+/* Slim inline stat strip — dipakai di Dashboard, Customer, Opportunity biar angka
+   sekilas doang, bukan grid kartu gede ala report */
+.dash-stat-strip {
+  display: flex; align-items: center; gap: 0;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 22px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.dash-stat { text-align: left; padding: 0 22px; flex: 1; min-width: 130px; }
+.dash-stat:first-child { padding-left: 0; }
+.dash-stat-val { font-family: 'Sora', sans-serif; font-size: 21px; font-weight: 800; line-height: 1.1; }
+.dash-stat-lbl { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 4px; }
+.dash-stat-divider { width: 1px; align-self: stretch; background: var(--border2); flex-shrink: 0; }
+@media (max-width: 720px) {
+  .dash-stat-divider { display: none; }
+  .dash-stat { padding: 8px 0; flex: 1 1 45%; }
+}
+
+/* ===== Chain flow — Customer → Sales → Opportunity → Pipeline, nyambung kayak rantai ===== */
+.chain-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  padding: 22px 24px; margin-bottom: 16px; position: relative; overflow: hidden;
+}
+.chain-card::before {
+  content: ''; position: absolute; top: -40%; right: -10%; width: 280px; height: 280px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(0,229,255,.09), transparent 70%); pointer-events: none;
+}
+.chain-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; position: relative; z-index: 1; }
+.chain-flow { display: flex; align-items: stretch; gap: 0; position: relative; z-index: 1; overflow-x: auto; padding-bottom: 4px; }
+.chain-node {
+  flex: 1; min-width: 150px; background: var(--surface2); border: 1.5px solid var(--border2);
+  border-radius: 14px; padding: 16px 18px; position: relative; transition: border-color .18s, transform .18s;
+  cursor: pointer; text-align: left; font-family: inherit; color: inherit;
+}
+.chain-node:hover { border-color: var(--signal); transform: translateY(-2px); }
+.chain-node-icon {
+  width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; margin-bottom: 12px; background: var(--signal-soft); color: var(--signal);
+}
+.chain-node-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+.chain-node-value { font-family: 'Sora', sans-serif; font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 6px; }
+.chain-node-desc { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.chain-arrow { display: flex; align-items: center; justify-content: center; width: 44px; flex-shrink: 0; color: var(--signal); font-size: 18px; position: relative; }
+.chain-arrow::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1.5px; background: linear-gradient(90deg, var(--border2), var(--signal), var(--border2)); z-index: -1; }
+.chain-arrow span { background: var(--surface); padding: 0 4px; position: relative; z-index: 2; }
+.chain-node.is-opportunity .chain-node-icon { background: var(--success-soft); color: var(--success); }
+.chain-node.is-opportunity { border-color: rgba(57,255,142,.3); }
+.chain-node.is-ops .chain-node-icon { background: rgba(139,92,246,.15); color: var(--ai-1); }
+.chain-node.is-ops { border-color: rgba(139,92,246,.25); }
+.chain-divider {
+  display: flex; align-items: center; gap: 10px; margin: 16px 0; position: relative; z-index: 1;
+}
+.chain-divider::before, .chain-divider::after {
+  content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border2));
+}
+.chain-divider::after { background: linear-gradient(90deg, var(--border2), transparent); }
+.chain-divider span {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--success); background: var(--success-soft); padding: 4px 12px; border-radius: 100px; white-space: nowrap;
+}
+.chain-input-tags { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; position: relative; z-index: 1; }
+.chain-input-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; padding: 6px 12px; border-radius: 100px; background: var(--surface2); border: 1px solid var(--border2); color: var(--muted); }
+.chain-input-tag b { color: var(--text); }
+@media (max-width: 760px) {
+  .chain-flow { flex-direction: column; }
+  .chain-arrow { width: 100%; height: 28px; }
+  .chain-arrow::before { left: 50%; right: auto; top: 0; bottom: 0; width: 1.5px; height: auto; background: linear-gradient(180deg, var(--border2), var(--signal), var(--border2)); }
+}
 
 /* =============================================
    PIPELINE REDESIGN
@@ -1086,7 +1156,109 @@ button { font-family: inherit; cursor: pointer; }
 .settings-banner-title { font-family:'Sora',sans-serif; font-size:15px; font-weight:800; margin-bottom:3px; }
 .settings-banner-sub { font-size:12.5px; color:var(--muted); line-height:1.5; }
 
-/* Settings shell — sub-nav kiri + panel kanan, biar gak jadi satu scroll panjang */
+/* Info tip — tombol kecil "ⓘ label", klik buat munculin penjelasan singkat.
+   Ganti dari banner teks panjang yang kepanjangan & makan tempat permanen. */
+/* Banner filter aktif — dipakai pas masuk dari deep-link kayak "Menunggu Approval" */
+.callout-warn {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--warning-soft); border: 1px solid rgba(255,178,61,.3); border-radius: 10px;
+  padding: 10px 14px; font-size: 12.5px; color: var(--text);
+}
+.link-btn {
+  background: none; border: none; color: var(--signal); font-weight: 700; font-size: 12.5px;
+  cursor: pointer; font-family: inherit; padding: 0; text-decoration: underline;
+}
+
+.info-tip { position: relative; display: inline-block; margin-bottom: 16px; }
+.info-tip-trigger {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1.5px solid var(--border2); border-radius: 100px;
+  padding: 6px 13px 6px 10px; font-size: 12px; font-weight: 600; color: var(--muted);
+  cursor: pointer; font-family: inherit; transition: border-color .15s, color .15s;
+}
+.info-tip-trigger:hover { border-color: var(--signal); color: var(--text); }
+.info-tip-icon {
+  width: 15px; height: 15px; border-radius: 50%; background: var(--signal-soft); color: var(--signal);
+  font-size: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.info-tip-bubble {
+  position: absolute; top: calc(100% + 8px); left: 0; width: 300px; z-index: 30;
+  background: var(--surface); border: 1px solid var(--border2); border-radius: 12px;
+  padding: 14px 16px; font-size: 12.5px; line-height: 1.6; color: var(--muted);
+  box-shadow: 0 12px 32px rgba(0,0,0,.4);
+  animation: infoTipIn .15s ease-out;
+}
+.info-tip-bubble b { color: var(--text); }
+.info-tip-bubble a { color: var(--signal); }
+@keyframes infoTipIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 480px) { .info-tip-bubble { width: 240px; } }
+/* ===== Sales (Team) page — kartu tiap rep + detail beban kerja ===== */
+.sales-rep-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;
+}
+.sales-rep-card {
+  background: var(--surface); border: 1.5px solid var(--border2); border-radius: 14px;
+  padding: 16px; text-align: left; cursor: pointer; font-family: inherit; color: inherit;
+  transition: border-color .15s, transform .15s;
+}
+.sales-rep-card:hover { transform: translateY(-2px); border-color: var(--signal); }
+.sales-rep-card.on { border-color: var(--signal); background: var(--surface2); box-shadow: 0 0 0 1px var(--signal) inset; }
+
+/* Mode fokus 1 sales — gak nampilin rep lain sama sekali, cuma header ringkas + tombol balik */
+.sales-rep-focus-back {
+  background: none; border: none; color: var(--muted); font-size: 12.5px; font-weight: 700;
+  cursor: pointer; font-family: inherit; padding: 0; margin-bottom: 14px;
+}
+.sales-rep-focus-back:hover { color: var(--signal); }
+.sales-rep-focus-head {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  background: var(--surface); border: 1.5px solid var(--border2); border-radius: 14px; padding: 16px 20px;
+}
+.sales-rep-focus-name { font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 800; }
+.sales-rep-focus-email { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.sales-rep-focus-stats { display: flex; align-items: center; gap: 16px; margin-left: auto; font-size: 12.5px; color: var(--muted); }
+.sales-rep-focus-stats b { color: var(--text); }
+.sales-rep-focus-pipeline { font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 800; color: var(--signal); }
+.sales-rep-card .avatar { margin-bottom: 10px; }
+.sales-rep-card-name { font-size: 13.5px; font-weight: 700; }
+.sales-rep-card-email { font-size: 11px; color: var(--muted); margin-top: 2px; margin-bottom: 10px; }
+.sales-rep-card-stats { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); margin-bottom: 8px; }
+.sales-rep-card-stats b { color: var(--text); }
+.sales-rep-card-pipeline { font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 800; color: var(--signal); }
+
+/* ===== Project cards ===== */
+.project-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px;
+}
+.project-card {
+  background: var(--surface); border: 1.5px solid var(--border2); border-radius: 16px;
+  padding: 20px; display: flex; flex-direction: column;
+  transition: border-color .15s;
+}
+.project-card:hover { border-color: var(--signal); }
+.project-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.project-status-select {
+  background: var(--surface2); border: 1.5px solid var(--border2); border-radius: 8px;
+  color: var(--text); font-size: 11.5px; font-weight: 600; font-family: inherit;
+  padding: 5px 8px; cursor: pointer; max-width: 130px;
+}
+.project-status-select:hover { border-color: var(--signal); }
+.project-card-name {
+  font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; line-height: 1.35; margin-bottom: 4px;
+}
+.project-card-customer { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.project-card-pic { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-soft); margin-bottom: 18px; }
+.project-card-budget { margin-bottom: 16px; }
+.project-card-budget-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; color: var(--muted); margin-bottom: 7px; }
+.project-card-progress-track { height: 7px; border-radius: 100px; background: var(--surface2); overflow: hidden; }
+.project-card-progress-fill { height: 100%; border-radius: 100px; transition: width .3s ease; }
+.project-card-overbudget { font-size: 11px; font-weight: 700; color: var(--danger); margin-top: 7px; }
+.project-card-purchase-link {
+  display: block; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border);
+  font-size: 12.5px; font-weight: 600; color: var(--signal); text-decoration: none;
+}
+.project-card-purchase-link:hover { text-decoration: underline; }
+
 .settings-shell { display: flex; gap: 20px; align-items: flex-start; margin-top: 16px; }
 .settings-nav { display: flex; flex-direction: column; gap: 3px; width: 180px; flex-shrink: 0; }
 .settings-nav-item {

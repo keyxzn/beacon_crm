@@ -13,6 +13,10 @@ class Settings(BaseSettings):
 
     frontend_origin: str = "http://localhost:3000"
 
+    # Verify token buat webhook WA (dipanggil provider kayak Meta Cloud API/Twilio pas ada chat masuk).
+    # Ganti lewat .env pas udah connect ke provider WA beneran.
+    whatsapp_webhook_token: str = "dev-wa-token-change-me"
+
     class Config:
         env_file = ".env"
         case_sensitive = False
